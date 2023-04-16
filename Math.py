@@ -229,7 +229,12 @@ class Vector(Matrix):
         return self.__mul__(self, self)
 
     def __floordiv__(self, other: Vector):
+        '''
+        Compute the cross product of two vectors using the determinant of a 3x3 matrix.
 
+        :param other: a vector
+        :return: the vector cross product of self and other
+        '''
         matrix = Matrix(matrix=[[1, 1, 1], self.transposition()[0], other.transposition()[0]])
         return Vector(coords=
                       [(-1) ** i
@@ -238,7 +243,9 @@ class Vector(Matrix):
                        ])
 
     def unitVector(self):
-
+        '''
+        :return: unit vector
+        '''
         return self / ((self ** 2) ** 0.5)
 
 
@@ -277,7 +284,10 @@ class Point:
              for key, val in self.__dict__.items()])
 
     def distance(self, other : Point) -> float:
-
+        '''
+        :param other: other.coords = [[c1],..., [cn]]
+        :return: distance between two points in Cartesian coordinates computed using Pythagoras theorem
+        '''
         return sum([_[0]**2 for _ in (self.coords - other.coords).matrix]) ** 0.5
 
 
@@ -296,9 +306,18 @@ class RigidBody:
         )
 
         for point in pointField:
-            centerUnit = point.velocity - self.center.coords
-            point.lvelocity = centerUnit.unitVector() * (point.velocity * centerUnit)
-            point.fvelocity = point.velocity - point.lvelocity
+            # Compute unit vector from the points to the mass center
+            centerUnit          = point.velocity - self.center.coords
+            # Compute forward velocity using projection multiplied by unit vector
+            point.fvelocity     = centerUnit.unitVector() * \
+                                  (point.velocity * centerUnit)
+            # Compute linear velocity using triangle - vector rule
+            point.lvelocity     = point.velocity - point.fvelocity
+
+            # set accelerations of the point to zero
+            point.facceleration = Vector([0, 0, 0])
+            point.lacceleration = Vector([0, 0, 0])
+
             # print(centerUnit, point.velocity, point.lvelocity, point.fvelocity, sep = '\n', end = '\n ======= \n')
 
         self.inertia = sum([point.mass * (point.distance(self.center))**2 for point in self.field])
