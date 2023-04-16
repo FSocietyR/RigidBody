@@ -27,9 +27,12 @@ def pprint(*args, **kwargs):
         for matrix in lManifold:
             if len(matrix) != 1:
                 builtins.print('[', matrix[0], sep='', **kwargs)
+            else:
+                builtins.print('[', matrix[0], sep ='', end = '',  **kwargs)
             for idx, _ in enumerate(matrix[1:]):
                 builtins.print('', _) if idx != len(matrix) - 2 else builtins.print('', _, end='', **kwargs)
             builtins.print(']')
+
 
     # for i in args:
     #     if isinstance(i, (list, tuple)):
