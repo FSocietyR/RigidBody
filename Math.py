@@ -4,8 +4,14 @@ from math import sqrt
 import builtins
 
 
-def pprint(*args, **kwargs):
+def sum(seq, start=0):
+    if all([isinstance(_, Matrix) for _ in seq]):
+        return builtins.sum(seq[1:], start=seq[0])
+    else:
+        return builtins.sum(seq, start)
 
+
+def pprint(*args, **kwargs):
     """ Modifier for builtin function print to pretty print arrays aka matrices
 
     Typical use:
@@ -28,25 +34,10 @@ def pprint(*args, **kwargs):
             if len(matrix) != 1:
                 builtins.print('[', matrix[0], sep='', **kwargs)
             else:
-                builtins.print('[', matrix[0], sep ='', end = '',  **kwargs)
+                builtins.print('[', matrix[0], sep='', end='', **kwargs)
             for idx, _ in enumerate(matrix[1:]):
                 builtins.print('', _) if idx != len(matrix) - 2 else builtins.print('', _, end='', **kwargs)
             builtins.print(']')
-
-
-    # for i in args:
-    #     if isinstance(i, (list, tuple)):
-    #         for matrix in i:
-    #             if len(matrix) != 1:
-    #                 builtins.print('[', matrix[0], sep='', end='', **kwargs)
-    #                 for idx, _ in enumerate(matrix[1:]):
-    #                     builtins.print('', _, sep=' ', end='' if idx != len(matrix) - 2 else ']', **kwargs)
-    #                 builtins.print('')
-    #     else:
-    #         try:
-    #             builtins.print(*i, **kwargs, sep = ' ')
-    #         except:
-    #             builtins.print(i, **kwargs, sep = ' ')
 
 
 class InitError(Exception):
@@ -55,22 +46,18 @@ class InitError(Exception):
         super().__init__(message)
 
 
-# class MatrixMathError(Exception):
-#
-#     def __init__(self, message):
-#         super().__init__(message)
-
 
 class Matrix:
+
+    # m = Matrix([[1,2,3], [4,5,6], [7,8,9]]) -> [[1,2,3], [4,5,6], [7,8,9]]
 
     @classmethod
     def matrix(cls, *args):
         return cls(*args)
 
     @classmethod
-    def calculateMinor(cls, matrix, st_index, fi_index):
-        return [row[:fi_index] + row[fi_index + 1:] for row in (matrix[:st_index] + matrix[st_index + 1:])]
-
+    def calculateMinor(cls, matrix, stIndex, fiIndex):
+        return [row[:fiIndex] + row[fiIndex + 1:] for row in (matrix[:stIndex] + matrix[stIndex + 1:])]
 
     @staticmethod
     def DETERMINANTERROR(func):
@@ -96,15 +83,21 @@ class Matrix:
                 return func(args[0], args[1])
             except AttributeError:
 
-                att_dic = dict(zip([_.__class__ if _.__class__ != int else float for _ in args ], args))
+                att_dic = dict(zip([_.__class__ if _.__class__ != int else float for _ in args], args))
                 try:
-                    matrix, num  = att_dic[Matrix], att_dic[float]
+                    matrix, num = att_dic[Matrix], att_dic[float]
                 except KeyError:
                     raise ValueError("Can not multiply matrices")
-                # # expanded     = [(([num] * 1 if i == 0 else [0]) + [0 for j in range(matrix.shape[1]-1)]) for i in range(matrix.shape[0])]
-                # expanded = [[num if i == 0 else 0 for j in range(matrix.shape[1])] for i in range(matrix.shape[0])]
-                # pprint(expanded)
+
                 return func(matrix, num)
+
+        return _unwrapper
+
+    @staticmethod
+    def MATRIXDIVERROR(func):
+        def _unwrapper(*args):
+            assert isinstance(args[0], (Matrix, Vector)), "Division is not supported for matrices"
+            return func(*args)
 
         return _unwrapper
 
@@ -121,13 +114,7 @@ class Matrix:
                 for i in range(len(self.matrix[0]))]
 
     def __str__(self):
-        # if len(self.matrix) != 1:
-        #     builtins.print('[', self.matrix[0], sep = '')
-        #     for idx, _ in enumerate(self.matrix[1:]):
-        #         builtins.print('', _) if idx != len(self.matrix) - 2 else builtins.print('', _, end = '')
-        #     builtins.print(']')
-        # else:
-        #     builtins.print('[', self.matrix[0], ']', sep='')
+
         pprint(self.matrix)
 
         return "-------\n<class 'Matrix'>"
@@ -137,24 +124,12 @@ class Matrix:
         return Matrix([[i + j for i, j in zip(k, v)]
                        for k, v in zip(self.matrix,
                                        other.matrix)])
-        # if self.shape == other.shape:
-        #     return Matrix([[i + j for i, j in zip(k, v)]
-        #                           for k, v in zip(self.matrix,
-        #                                           other.matrix)])
-        # else:
-        #     raise MatrixMathError("Matrices should be same shape")
 
     @MATRIXMATHERROR
     def __sub__(self, other: Matrix) -> Matrix:
         return Matrix([[i - j for i, j in zip(k, v)]
                        for k, v in zip(self.matrix,
                                        other.matrix)])
-        # if self.shape == other.shape:
-        #     return Matrix([[i - j for i, j in zip(k, v)]
-        #                           for k, v in zip(self.matrix,
-        #                                           other.matrix)])
-        # else:
-        #     raise MatrixMathError("Matrices should be same shape")
 
     @MATRIXMULTERROR
     def __mul__(self, other: Matrix | float | int) -> Matrix:
@@ -168,16 +143,10 @@ class Matrix:
         except AttributeError:
             return Matrix([[i * other for i in row1] for row1 in self.matrix])
 
-        # if self.shape[1] == other.shape[0]:
-        # prod = []
-        # for row1 in self.matrix:
-        #     intermediate_prod = []
-        #     for row2 in other.transposition():
-        #         intermediate_prod.append(sum([i * j for i,j in zip(row1, row2)]))
-        #     prod.append(intermediate_prod)
-        # return Matrix(prod)
-        # else:
-        #     raise MatrixMathError("Can't multiply matrices")
+    @MATRIXDIVERROR
+    def __truediv__(self, other):
+
+        return self * (1 / other)
 
     @DETERMINANTERROR
     def determinant(self, matrixMinor: list) -> float:
@@ -197,6 +166,8 @@ class Matrix:
 
 class Vector(Matrix):
 
+    # v = Vector([1,2,3]) -> [[1], [2], [3]]
+
     @classmethod
     def vector(cls, *args):
         return cls(*args)
@@ -208,9 +179,7 @@ class Vector(Matrix):
 
         return _unwrapper
 
-    def __init__(self, coords : list):
-
-        # assert any([type(_) == int or type(_) == float if type(coords[0] == int) else type(coords[0][i]) == int or type(coords[0][i]) == float for i, _ in enumerate(coords)]), "Incorrect coordinates"
+    def __init__(self, coords: list):
 
         if len(coords) == 1:
             if type(coords[0]) == list or type(coords[0]) == int or type(coords[0]) == float:
@@ -231,16 +200,8 @@ class Vector(Matrix):
         except KeyError:
             print('please, notice that vector should have coordinates')
             self.matrix = list(map(float, input('>>> ').split(' ')))
-            # self.magnitude = sqrt(sum([i ** 2 for i in self.coords]))
 
     def __str__(self):
-        # if len(self.matrix) != 1:
-        #     builtins.print('[', self.matrix[0], sep='')
-        #     for idx, _ in enumerate(self.matrix[1:]): builtins.print('', _) if idx != len(
-        #         self.matrix) - 2 else builtins.print('', _, end='')
-        #     builtins.print(']')
-        # else:
-        #     builtins.print('[', self.matrix[0], ']', sep='')
 
         pprint(self.matrix)
 
@@ -250,91 +211,108 @@ class Vector(Matrix):
         return Vector(coords=[j for i in Matrix.__add__(self, other).matrix for j in i])
 
     def __sub__(self, other: Vector) -> Vector:
-        return Vector(coords=[j for i in Matrix.__add__(self, other).matrix for j in i])
+        return Vector(coords=[j for i in Matrix.__sub__(self, other).matrix for j in i])
 
     @multiply
     def __mul__(self, other: Matrix | Vector | int) -> Vector | float:
         try:
             other.matrix
             return Matrix.__mul__(self, other).matrix[0][0]
-            # if self.transposition() != other.matrix:
-            #     return Matrix.__mul__(self, other).matrix[0][0]
-            # else:
-            #     self.magnitude = sqrt(Matrix.__mul__(self, other).matrix[0][0])
-            #     return self.magnitude
+
         except AttributeError:
             num = other
             return Vector.vector([i * num for i in self.matrix[0]])
 
-    def __pow__(self, exp = 2):
+    def __pow__(self, exp=2):
         assert exp == 2, "Can't pow vector"
 
         return self.__mul__(self, self)
 
-    def __floordiv__(self, other : Vector):
+    def __floordiv__(self, other: Vector):
 
         matrix = Matrix(matrix=[[1, 1, 1], self.transposition()[0], other.transposition()[0]])
         return Vector(coords=
                       [(-1) ** i
-                        * matrix.determinant(Matrix.calculateMinor(matrix.matrix, 0, i))
+                       * matrix.determinant(Matrix.calculateMinor(matrix.matrix, 0, i))
                        for i in range(3)
                        ])
-
-    def __truediv__(self, other):
-
-        return self * (1 / other)
 
     def unitVector(self):
 
         return self / ((self ** 2) ** 0.5)
 
+
 class Point:
 
     def __init__(self,
-                 mass     : int | float,
-                 coords   : list       ,
-                 velocity : list       ,
-                 friction : int | float):
+                 mass: int | float,
+                 coords: list,
+                 velocity: list,
+                 friction: int | float):
 
-        types_dict = {mass: 'mass', friction: 'friction'}
-        invalid_types = [t for t in types_dict if not isinstance(t, (int, float))]
-        if invalid_types:
-            invalid_type = invalid_types[0]
-            var_name = types_dict[invalid_type]
-            raise InitError(f"Not implemented -{var_name}- argument type: {invalid_type.__class__}")
+        typDict = {mass: 'mass', friction: 'friction'}
+        invDict = [t for t in typDict if not isinstance(t, (int, float))]
+        if invDict:
+            invType = invDict[0]
+            varName = typDict[invType]
+            raise InitError(f"Not implemented -{varName}- argument type: {invType.__class__}")
 
         self.mass = mass
-        # sorted([coords, velocity])[0] += [0] * abs(len(velocity) - len(coords))
-        self.coords = Matrix(Matrix([coords]).transposition())
-        self.velocity = Vector(velocity)
+        if not isinstance(coords, Matrix):
+            # self.coords = Matrix(Matrix([coords]).transposition())
+            self.coords = Vector(coords)
+        else:
+            self.coords = coords
+        if not isinstance(velocity, Vector):
+            self.velocity = Vector(velocity)
+        else:
+            self.velocity = velocity
         self.friction = friction
 
     def __str__(self):
-
         return '\n'.join(
             [key + ' : ' + str(val)
              if type(val) == int or type(val) == float
              else key + ' : ' + ' '.join([str(_) for _ in val.matrix])
-                                 for key,val in self.__dict__.items()])
+             for key, val in self.__dict__.items()])
+
+    def distance(self, other : Point) -> float:
+
+        return sum([_[0]**2 for _ in (self.coords - other.coords).matrix]) ** 0.5
 
 
-class RigidBody(Point):
+class RigidBody:
 
-    def __init__(self, pointField : list):
-        self.field  = pointField
-        self.center = sum([point.mass * point.matrix for point in self.field]) / \
-                      sum([point.mass for point in self.field])
+    def __init__(self, pointField: list):
+        self.field    = pointField
+        self.center   = Point(
+                            mass     = sum([point.mass for point in self.field]),
+                            coords   = sum([point.coords * point.mass for point in self.field])   / \
+                                       sum([point.mass for point in self.field]),
+                            velocity = sum([point.velocity * point.mass for point in self.field]) / \
+                                       sum([point.mass for point in self.field]),
+                            friction = sum([point.mass for point in self.field])                  / \
+                                       sum([     1     for point in self.field]),
+        )
 
-    def bodyMovement(self, ):
+        for point in pointField:
+            centerUnit = point.velocity - self.center.coords
+            point.lvelocity = centerUnit.unitVector() * (point.velocity * centerUnit)
+            point.fvelocity = point.velocity - point.lvelocity
+            # print(centerUnit, point.velocity, point.lvelocity, point.fvelocity, sep = '\n', end = '\n ======= \n')
+
+        self.inertia = sum([point.mass * (point.distance(self.center))**2 for point in self.field])
+
+    def bodyMovement(self):
         ...
 
 
+x = Point(mass=10, coords=[3.4, 5.3, 0], velocity=[3, -5, 0], friction=0.7)
+y = Point(mass=3, coords=[2.2, 0.7, 0], velocity=[3, -5, 0], friction=0.7)
 
-x = Point(mass=10, coords=[3.4, 5.6, 7.8], velocity=[3,-5, 0], friction = 0.7)
-# y = Point(mass='10', coords=[3.4, 5.6, 7.8], velocity=[3,-5, 0], friction = 0.7)
+b = RigidBody([x, y])
 
-print(x)
-
+# print(x)
 
 #
 # class point:
